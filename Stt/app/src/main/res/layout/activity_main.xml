@@ -21,8 +21,11 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@+id/button"
-        android:layout_centerHorizontal="true"
-        android:layout_centerVertical="true"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginStart="152dp"
+        android:layout_marginTop="55dp"
+        android:layout_marginEnd="152dp"
         android:text="Only speak" />
 
     <TextView
@@ -34,8 +37,7 @@
         android:layout_marginTop="130dp"
         android:layout_marginEnd="0dp"
         android:text="..........................."
-        android:textAlignment="center"
-        android:textSize="35dp" />
+        android:textAlignment="center" />
 
     <TextView
         android:id="@+id/textView3"
@@ -45,7 +47,7 @@
         android:layout_alignParentTop="true"
         android:layout_marginStart="0dp"
         android:layout_marginTop="69dp"
-        android:text="EDDIE v1.1 Prototype model - TTS STT "
+        android:text="EDDIE v1.2 Prototype model - TTS STT "
         android:textAlignment="center" />
 
     <Button
@@ -71,4 +73,18 @@
         android:layout_marginEnd="103dp"
         android:layout_marginBottom="86dp"
         android:text="Debug messages appear here, Hopefully you don't have to use it :)" />
+
+    <Button
+        android:id="@+id/b4"
+        android:layout_width="129dp"
+        android:layout_height="176dp"
+        android:layout_above="@+id/button"
+        android:layout_below="@+id/textView"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginStart="29dp"
+        android:layout_marginTop="80dp"
+        android:layout_marginEnd="253dp"
+        android:layout_marginBottom="-173dp"
+        android:text="Second Activity" />
 </RelativeLayout>

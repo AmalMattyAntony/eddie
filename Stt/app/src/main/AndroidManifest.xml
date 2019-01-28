@@ -12,6 +12,7 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         tools:ignore="AllowBackup,GoogleAppIndexingWarning">
+        <activity android:name=".SecondActivity"></activity>
         <activity
             android:name=".MainActivity"
             android:label="EDDIEv1">
@@ -24,7 +25,7 @@
         <activity
             android:name=".personalised_voice"
             android:label="@string/title_activity_personalised_voice"
-            android:theme="@style/AppTheme"></activity>
+            android:theme="@style/AppTheme" />
     </application>
 
 </manifest>

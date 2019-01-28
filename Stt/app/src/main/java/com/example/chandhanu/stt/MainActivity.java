@@ -2,6 +2,7 @@ package com.example.chandhanu.stt;
 //import com.example.chandhanu.stt.R;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.provider.Settings;
 import android.speech.RecognizerIntent;
 import android.speech.tts.TextToSpeech;
 import android.support.v7.app.AppCompatActivity;
@@ -10,7 +11,8 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
-
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
@@ -33,25 +35,28 @@ public class MainActivity extends AppCompatActivity {
     TextToSpeech t1;
     RequestQueue queue;
     TextView tv;
+    String android_id;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        android_id = Settings.Secure.getString(this.getContentResolver(), Settings.Secure.ANDROID_ID);
         queue = Volley.newRequestQueue(getApplicationContext());
         textView = this.findViewById(R.id.textView);
         tv=(TextView)findViewById(R.id.textView2);
-        Button button;
-        button = this.findViewById(R.id.button);
         Button bu=(Button)findViewById(R.id.button2);
         bu.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v)
             {
-                sendMessage();
+                sendMessage("");
             }
 
         });
-
         Button b1= findViewById(R.id.b1);
+
+        Button button;
+        button = this.findViewById(R.id.button);
+        button.setText("All in One");
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -65,8 +70,19 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+    //experiemental
+        Button b4= (Button)findViewById(R.id.b4);
+        b4.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(getApplicationContext(), SecondActivity.class);
+                intent.putExtra("hello","world");
+                startActivity(intent);
+            }
+        });
+        //end of experimental
 
-
+        //one time setup of voice
         t1=new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
             @Override
             public void onInit(int status) {
@@ -79,35 +95,74 @@ public class MainActivity extends AppCompatActivity {
         b1.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                String toSpeak = textView.getText().toString();
+                /*String toSpeak = textView.getText().toString();
                 Toast.makeText(getApplicationContext(), toSpeak,Toast.LENGTH_SHORT).show();
                 t1.speak(toSpeak, TextToSpeech.QUEUE_FLUSH, null);
+                */
+                speak("");
             }
         });
 
     }
-
+    public void speak(String query)
+    {
+        if(query=="") {
+            query = textView.getText().toString();
+        }
+        else
+        {
+            textView.setText(query);
+        }
+            Toast.makeText(getApplicationContext(), query,Toast.LENGTH_SHORT).show();
+            t1.speak(query, TextToSpeech.QUEUE_FLUSH, null);
+    }
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if(requestCode == 200){
             if(resultCode == RESULT_OK && data != null){
                 ArrayList<String> result = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-                textView.setText(result.get(0));
-                sendMessage();
+                String request=result.get(0);
+                textView.setText(request);
+                sendMessage(request);
             }
         }
     }
 
-
+public boolean offlineResponse(String input)
+{
+    //String words[]=input.split(" ");
+    //check for alarm
+    if(Pattern.matches("(?i).*alarm.*",input))
+    {
+        String pattern = "(?i)\\d+[.|:]\\d+.*[A.?M.?|P.?M.?]";
+        Pattern r = Pattern.compile(pattern);
+        Matcher m = r.matcher(input);
+        if (m.find( )) {
+             String time=m.group(0);
+             speak("Setting alarm for "+time);
+            //System.out.println("Found value: " + m.group(1) );
+            //System.out.println("Found value: " + m.group(2) );
+        }else {
+            textView.setText("I am sorry, please say that again");
+            speak("");
+        }
+        return true;
+    }
+    return false;
+}
 //nw
-public void sendMessage() {
+public void sendMessage(String request) {
+        if(offlineResponse(request))
+        {
+            return;
+        }
         String s=textView.getText().toString();
     String url = "http://142.93.211.225:80/";
     final JSONObject jsonObject = new JSONObject();
     try {
         jsonObject.put("request", s);
-        jsonObject.put("username", "tester3");
+        jsonObject.put("userId", android_id);
         jsonObject.put("token", "blah");
     } catch (JSONException e) {
         // handle exception
