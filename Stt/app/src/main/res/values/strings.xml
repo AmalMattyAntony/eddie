@@ -1,4 +1,7 @@
 <resources>
     <string name="app_name">Eddie_v1_STTS</string>
     <string name="title_activity_personalised_voice">personalised_voice</string>
+    <string name="channel_name">Eddie_interact</string>
+    <string name="channel_description">Eddie\'s way of interacting and checking up</string>
+
 </resources>

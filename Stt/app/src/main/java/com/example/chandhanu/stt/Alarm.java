@@ -1,3 +1,5 @@
+package com.example.chandhanu.stt;
+
 //<uses-permission android:name="com.android.alarm.permission.SET_ALARM"/>    //in androidmanidfesf.xml
 
 import android.content.Intent;
@@ -5,7 +7,7 @@ import android.provider.AlarmClock;
 import android.support.v7.app.AppCompatActivity;
 //import static android.support.v4.content.ContextCompat.startActivity;
 
-public class alarm extends AppCompatActivity{
+public class Alarm extends AppCompatActivity{
     public void alarm_call(int hour, int minutes , String message)
     {
         Intent intent = new Intent(AlarmClock.ACTION_SET_ALARM);
@@ -24,9 +26,9 @@ public class alarm extends AppCompatActivity{
         intent.putExtra(AlarmClock.EXTRA_ALARM_SEARCH_MODE, AlarmClock.ALARM_SEARCH_MODE_LABEL);
         intent.putExtra(AlarmClock.EXTRA_MESSAGE,message);
 
-        //   AlarmClock.ACTION_DISMISS_ALARM,"Endhiri_da");
         //for going to clock
         startActivity(intent);
         intent.putExtra(AlarmClock.EXTRA_SKIP_UI, true);
     }
 }
+

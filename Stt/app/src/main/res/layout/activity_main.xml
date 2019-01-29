@@ -7,11 +7,12 @@
     tools:context="com.example.chandhanu.stt.MainActivity">
 
 
-    <Button
+    <ImageButton
         android:id="@+id/button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_centerHorizontal="true"
+        android:background="@drawable/button_background"
         android:layout_centerVertical="true"
         android:text="All in One"
         tools:ignore="HardcodedText" />
