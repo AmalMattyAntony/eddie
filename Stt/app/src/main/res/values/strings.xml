@@ -3,5 +3,8 @@
     <string name="title_activity_personalised_voice">personalised_voice</string>
     <string name="channel_name">Eddie_interact</string>
     <string name="channel_description">Eddie\'s way of interacting and checking up</string>
+    <string name="token">token_id</string>
+    <string name="droplet">http://142.93.211.225:80/responder/</string>
+    <string name="voice_path">/storage/emulated/0/eddie/</string>
 
 </resources>
