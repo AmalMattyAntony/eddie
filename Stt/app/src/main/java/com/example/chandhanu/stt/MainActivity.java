@@ -6,15 +6,18 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.TaskStackBuilder;
 import android.content.ActivityNotFoundException;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
 import android.provider.AlarmClock;
+import android.provider.ContactsContract;
 import android.provider.Settings;
 import android.speech.RecognizerIntent;
 import android.speech.tts.TextToSpeech;
@@ -61,6 +64,7 @@ import java.util.Map;
 public class MainActivity extends AppCompatActivity {
 
     private TextView textView;
+    String phno;
     String whoCalledListen="";
     JsonObjectRequest1 jsonObjectRequest;
     String token;
@@ -75,10 +79,13 @@ public class MainActivity extends AppCompatActivity {
     String lastHeard;
     String CHANNEL_ID="eddie_n1";
     int i=0;
+    private DatabaseHelper myDb;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        myDb=new DatabaseHelper(this);
         android_id = Settings.Secure.getString(this.getContentResolver(), Settings.Secure.ANDROID_ID);
         queue = Volley.newRequestQueue(getApplicationContext());
         createNotificationChannel();
@@ -144,7 +151,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
-
+        b1.setText("hello world");
         b1.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -162,9 +169,13 @@ public class MainActivity extends AppCompatActivity {
                         .setPriority(NotificationCompat.PRIORITY_DEFAULT);
                 notificationManager.notify(8,mBuilder.build());*/
                 //speak("");
-                Notification n=new Notification();
-                //n.makeNotification(getApplicationContext());
-                n.setNotification(getApplicationContext(),Calendar.getInstance().getTimeInMillis()+300);
+
+                //getContactList();
+                //textView.setText("caling db");
+                //textView.setText(myDb.getData("Amal"));
+                textView.setText("lh"+lastHeard);
+                //Notification n=new Notification();
+                //n.setNotification(getApplicationContext(),Calendar.getInstance().getTimeInMillis()+300);
             }
         });
 
@@ -201,7 +212,7 @@ public class MainActivity extends AppCompatActivity {
                      case("sms"): sendSMS(lastHeard,request);
                      default: sendMessage(request);;
                 }*/
-                if(whoCalledListen=="sms") sendSMS(lastHeard,request);
+                if(whoCalledListen=="sms") sendSMS(phno,request);
                 else sendMessage(request);
                 lastHeard=request;
             }
@@ -226,7 +237,16 @@ public boolean offlineResponse(String input)
     {
         return sms(input);
     }
+    else if(Pattern.matches("(?i).*(google|search).*",input))
+    {
+        return googleSearch(input);
+    }
     return false;
+}
+boolean googleSearch(String input)
+{
+    
+    return true;
 }
 void listen()
 {
@@ -242,28 +262,45 @@ void listen()
 boolean call(String input)
 {
     //textView.setText("in calling");
-    input=input.replaceAll("call","");
+   // speak("let me try");
+    String input1=input.replaceAll("call ","");
     input=input.replaceAll("\\D","");
-    textView.setText(input);
+    //textView.setText(input);
     Intent dialIntent = new Intent();
     dialIntent.setAction(Intent.ACTION_CALL);
-   //
-
+    //speak("this "+input1);
+    String no2=myDb.getData(input1);//.replaceAll(" ",""));
     String pattern = "(?i)(\\d{12})|(\\d{10})";
     Pattern r = Pattern.compile(pattern);
     Matcher m = r.matcher(input);
+    Matcher m1 = r.matcher(no2);
+    //speak(no2);
+    Log.i("number kedaichadu ithu","what is the problem");
     if (m.find()) {
         String no="";
         for(int i=0;i<input.length();++i)
             no+=input.charAt(i)+" ";
-        speak("Calling "+no);
+        speak("Calling "+input1);
         dialIntent.setData(Uri.parse("tel:"+input));
         startActivity(dialIntent);
-    }else {
-        textView.setText("I am sorry, please say that again");
+    }
+    else if (m1.find()) {
+        String no="";
+        for(int i=0;i<no2.length();++i)
+            no+=no2.charAt(i)+" ";
+        speak("Calling "+input1);
+        if(no2.length()==12)
+        {
+            no2="+"+no2;
+        }
+        dialIntent.setData(Uri.parse("tel:"+no2));
+        startActivity(dialIntent);
+    }
+    else {
+        textView.setText("I am sorry, please say that again, Failed to call");
         speak("");
     }
-
+    textView.setText("no2"+no2+",input1:"+input1);
     return true;
 }
 boolean setAlarm(String input)
@@ -292,13 +329,32 @@ boolean setAlarm(String input)
 }
 boolean sms(String input)
 {
+    String input0[]=input.split(" ");
+    String input1=input0[input0.length-1].replaceAll(" ","");
+   // speak(input1);
+
     input=input.replaceAll("\\D","");
+    //tv.setText("!"+input+"!");
+    if(input.matches("\\w*"))
+    {
+        input=myDb.getData(input1);
+        input=input.replaceAll("\\D","");
+        tv.setText("!"+input+"!");
+        //speak(input);
+        //if(input)
+    }
     textView.setText(input);
     String pattern = "(?i)(\\d{12})|(\\d{10})";
     Pattern r = Pattern.compile(pattern);
     Matcher m = r.matcher(input);
     if (m.find()) {
+        if(input.length()==12)
+        {
+            input=input.substring(2,11);
+            tv.setText(input);
+        }
         lastHeard=input;
+        phno=input;
         whoCalledListen="sms";
         speak("what do you want the body to say?");
         new Handler().postDelayed(new Runnable() {
@@ -306,13 +362,14 @@ boolean sms(String input)
             public void run() {
                 listen();
             }
-        }, 5000);
+        }, 2000);
         //
     }else {
-        textView.setText("I am sorry, please say that again");
+        textView.setText("I am sorry, please say that again, could not send message");
         speak("");
     }
-
+    textView.setText(input);
+    //textView.setText(myDb.getData(input1));
     return true;
 }
 
@@ -320,7 +377,7 @@ public boolean sendSMS(String phoneNo, String msg) {
         try {
             SmsManager smsManager = SmsManager.getDefault();
             smsManager.sendTextMessage(phoneNo, null, msg, null, null);
-            Toast.makeText(getApplicationContext(), "Message Sent",
+            Toast.makeText(getApplicationContext(), "Message Sent"+phoneNo+","+msg,
                     Toast.LENGTH_LONG).show();
         } catch (Exception ex) {
             Toast.makeText(getApplicationContext(),ex.getMessage().toString(),
@@ -446,61 +503,71 @@ public void sendMessage(String request) {
         SharedPreferences sharedPref = getSharedPreferences("eddie-overall",Context.MODE_PRIVATE);
         return sharedPref.getString(getString(R.string.token),"notFound");
     }
-    void http1(String speak) throws JSONException {
-        String url="https://avatar.lyrebird.ai/api/v0/generate";
-        final JSONObject jsonObject = new JSONObject();
-        jsonObject.put("text", speak);
-        jsonObjectRequest = new JsonObjectRequest1
-                (Request.Method.POST, url, jsonObject, new Response.Listener<JSONObject>() {
+    void http1(final String speak) throws JSONException {
+        File temp=new File(getString(R.string.voice_path)+speak+".mp3");
+        if(!temp.exists()) {
+            //temp.exists(t)
+            String url = "https://avatar.lyrebird.ai/api/v0/generate";
+            final JSONObject jsonObject = new JSONObject();
+            jsonObject.put("text", speak);
+            jsonObjectRequest = new JsonObjectRequest1
+                    (Request.Method.POST, url, jsonObject, new Response.Listener<JSONObject>() {
 
-                    @Override
-                    public void onResponse(JSONObject response) {
+                        @Override
+                        public void onResponse(JSONObject response) {
 
-                        //textView.setText("Response: ");// + response.toString());
-                        // tv4.setText(jsonObjectRequest.responseBody.toString());
-                        writeFile();
+                            //textView.setText("Response: ");// + response.toString());
+                            // tv4.setText(jsonObjectRequest.responseBody.toString());
+                            writeFile(speak);
+                        }
+                    }, new Response.ErrorListener() {
+
+                        @Override
+                        public void onErrorResponse(VolleyError error) {
+                            // TODO: Handle error
+                            Log.i("error in volley:", error.toString());
+                            //Log.i("network errorapparently",error.networkResponse.toString());
+                            writeFile(speak);
+
+                        }
+                    }) {
+
+                @Override
+                public Map<String, String> getHeaders() throws AuthFailureError {
+                    Map<String, String> params = new HashMap<String, String>();
+                    params.put("Content-Type", "application/json");
+                    if (token == "notFound") {
+                        textView.setText("token is still not set");
                     }
-                }, new Response.ErrorListener() {
-
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        // TODO: Handle error
-                        Log.i("error in volley:",error.toString());
-                        //Log.i("network errorapparently",error.networkResponse.toString());
-                        writeFile();
-
-                    }}){
-
-            @Override
-            public Map<String, String> getHeaders() throws AuthFailureError {
-                Map<String, String> params = new HashMap<String, String>();
-                params.put("Content-Type", "application/json");
-                if(token=="notFound")
-                {
-                    textView.setText("token is still not set");
+                    params.put("Authorization", "Bearer " + token);
+                    return params;
                 }
-                params.put("Authorization", "Bearer "+token);
-                return params;
-            }
 
-        };
-        //jsonObjectRequest.c=getApplicationContext();
-        //jsonObjectRequest.a=this;
-       // textView.setText(getToken());
-        queue.add(jsonObjectRequest);
-
-
+            };
+            //jsonObjectRequest.c=getApplicationContext();
+            //jsonObjectRequest.a=this;
+            // textView.setText(getToken());
+            queue.add(jsonObjectRequest);
+        }
+        else
+        {
+            playFromFile(speak);
+        }
     }
-    void writeFile()
+
+    void writeFile(String fileName)
     {
        // File rootPath = new File(Environment.getExternalStorageDirectory(), "directory_name");
        // tv4.setText(Environment.getExternalStorageDirectory().toString());
        // mediaPlayer = MediaPlayer.create(this,Uri.parse(getString(R.string.voice_path)+"temp.mp3"));   //change perfect to ur song.mp3
+        if(fileName=="")fileName="temp";
+        Log.i("writing to file",fileName);
         File p=new File(getString(R.string.voice_path));
         try {
             if (!p.exists())
                 p.mkdir();
-            File dataFile = new File(getString(R.string.voice_path) + "temp.mp3");
+            //Log.i("p is",p);
+            File dataFile = new File(getString(R.string.voice_path)+fileName+".mp3");
             dataFile.createNewFile();
             dataFile.setWritable(true);
             OutputStream o = new FileOutputStream(dataFile);
@@ -509,20 +576,23 @@ public void sendMessage(String request) {
             o.flush();
             o.close();
             // speak1();
-            playFromFile();
+            playFromFile(fileName);
         }catch (IOException e) {
+           Log.i("error in writing",e.toString());
             e.printStackTrace();
             textView.setText(e.toString());
         }
         // AsyncTaskRunner t=new AsyncTaskRunner();
         //t.execute("5");
     }
-    void playFromFile()
+    void playFromFile(String fileName)
     {
+        if(fileName=="")
+            fileName="temp";
         mediaPlayer=new MediaPlayer();
-        //mediaPlayer = MediaPlayer.create(this,Uri.parse(getString(R.string.voice_path)+"temp.mp3"));   //change perfect to ur song.mp3
             try {
-                mediaPlayer.setDataSource(this,Uri.parse(getString(R.string.voice_path)+"temp.mp3"));
+                mediaPlayer.setDataSource(this,Uri.parse(getString(R.string.voice_path)+fileName+".mp3"));
+                //mediaPlayer.setDataSource(this,Uri.parse("temp.mp3"));
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -546,6 +616,46 @@ public void sendMessage(String request) {
 
     }
     //end of lyrebird dependencies
+    private void getContactList() {
+        //myDb.onUpgrade(myDb,1,2);
+        String TAG="getting contacts";
+        ContentResolver cr = getContentResolver();
+        Cursor cur = cr.query(ContactsContract.Contacts.CONTENT_URI,
+                null, null, null, null);
+
+        if ((cur != null ? cur.getCount() : 0) > 0) {
+            while (cur != null && cur.moveToNext()) {
+                String id = cur.getString(
+                        cur.getColumnIndex(ContactsContract.Contacts._ID));
+                String name = cur.getString(cur.getColumnIndex(
+                        ContactsContract.Contacts.DISPLAY_NAME));
+
+                if (cur.getInt(cur.getColumnIndex(
+                        ContactsContract.Contacts.HAS_PHONE_NUMBER)) > 0) {
+                    Cursor pCur = cr.query(
+                            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                            null,
+                            ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?",
+                            new String[]{id}, null);
+                    while (pCur.moveToNext()) {
+                        String phoneNo = pCur.getString(pCur.getColumnIndex(
+                                ContactsContract.CommonDataKinds.Phone.NUMBER));
+                        Boolean ifInserted =  myDb.insertdata(name,phoneNo);
+                        if(ifInserted = true)
+                            Toast.makeText(MainActivity.this,"Data Inserted" , Toast.LENGTH_LONG).show();
+                        else
+                            Toast.makeText(MainActivity.this,"Data not Inserted" , Toast.LENGTH_LONG).show();
+                        Log.i(TAG, "Name: " + name);
+                        Log.i(TAG, "Phone Number: " + phoneNo);
+                    }
+                    pCur.close();
+                }
+            }
+        }
+        if(cur!=null){
+            cur.close();
+        }
+    }
 
 }
 

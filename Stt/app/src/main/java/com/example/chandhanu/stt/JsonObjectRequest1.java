@@ -63,6 +63,7 @@ public class JsonObjectRequest1 extends JsonRequest<JSONObject> {
                 jsonRequest,
                 listener,
                 errorListener);
+        setShouldCache(false);
     }
 
     @Override
