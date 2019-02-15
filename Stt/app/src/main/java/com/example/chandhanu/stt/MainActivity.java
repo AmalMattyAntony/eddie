@@ -1,5 +1,6 @@
 package com.example.chandhanu.stt;
 //import com.example.chandhanu.stt.R;
+import android.Manifest;
 import android.app.Activity;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -10,6 +11,7 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.media.MediaPlayer;
 import android.net.Uri;
@@ -21,8 +23,11 @@ import android.provider.ContactsContract;
 import android.provider.Settings;
 import android.speech.RecognizerIntent;
 import android.speech.tts.TextToSpeech;
+import android.support.annotation.RequiresApi;
+import android.support.customtabs.CustomTabsIntent;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationManagerCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.telephony.SmsManager;
@@ -89,6 +94,14 @@ public class MainActivity extends AppCompatActivity {
         android_id = Settings.Secure.getString(this.getContentResolver(), Settings.Secure.ANDROID_ID);
         queue = Volley.newRequestQueue(getApplicationContext());
         createNotificationChannel();
+        Button contacts=(Button)findViewById(R.id.contacts);
+        contacts.setOnClickListener(new View.OnClickListener(){
+            public void onClick(View v)
+            {
+                Toast.makeText(getApplicationContext(),"Putting contacts into db",Toast.LENGTH_LONG).show();
+                getContactList();
+            }
+        });
         //Notification n=new Notification();
         //n.setNotification(this,Calendar.getInstance().getTimeInMillis()+3000);
         textView = this.findViewById(R.id.textView);
@@ -245,7 +258,15 @@ public boolean offlineResponse(String input)
 }
 boolean googleSearch(String input)
 {
-    
+    //enna pa
+    String search_query=input.replaceAll("(?i)(google|search)","");
+    String url = "http://google.com/search?q="+search_query;
+    CustomTabsIntent.Builder builder = new CustomTabsIntent.Builder();
+    CustomTabsIntent customTabsIntent = builder.build();
+    builder.addDefaultShareMenuItem();          //making share button iin menu list da
+    builder.setToolbarColor(ContextCompat.getColor(MainActivity.this, R.color.colorBlack));	//for color da
+    builder.setShowTitle(true);
+    customTabsIntent.launchUrl(MainActivity.this, Uri.parse(url));
     return true;
 }
 void listen()
@@ -617,6 +638,7 @@ public void sendMessage(String request) {
     }
     //end of lyrebird dependencies
     private void getContactList() {
+        //ask for permissions @author == Suresh Kumar R
         //myDb.onUpgrade(myDb,1,2);
         String TAG="getting contacts";
         ContentResolver cr = getContentResolver();
@@ -656,6 +678,56 @@ public void sendMessage(String request) {
             cur.close();
         }
     }
-
+    @RequiresApi(api = Build.VERSION_CODES.M)
+    boolean checkAndAskPermissions(int option) {
+        //ask for permissions @author == Suresh Kumar R
+        int READ_EXTERNAL_STORAGE_CODE = 1;
+        int SEND_SMS_CODE = 1;
+        int READ_CONTACTS_CODE = 1;
+        int CALL_PHONE_CODE = 1;
+        switch (option) {
+            case 0:     //for SEND_SMS
+                if (checkSelfPermission(Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED) {
+                    return true;
+                } else {
+                    if (shouldShowRequestPermissionRationale(Manifest.permission.SEND_SMS)) {
+                        Toast.makeText(MainActivity.this, "permission is needed to SEND_SMS", Toast.LENGTH_SHORT).show();
+                    }
+                    requestPermissions(new String[]{Manifest.permission.SEND_SMS}, SEND_SMS_CODE);
+                }
+                break;
+            case 1:     //for CALL_PHONE
+                if (checkSelfPermission(Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
+                    return true;
+                } else {
+                    if (shouldShowRequestPermissionRationale(Manifest.permission.CALL_PHONE)) {
+                        Toast.makeText(MainActivity.this, "permission is needed to CALL_PHONE", Toast.LENGTH_SHORT).show();
+                    }
+                    requestPermissions(new String[]{Manifest.permission.CALL_PHONE}, CALL_PHONE_CODE);
+                }
+                break;
+            case 2:     //for READ_CONTACTS
+                if (checkSelfPermission(Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+                    return true;
+                } else {
+                    if (shouldShowRequestPermissionRationale(Manifest.permission.READ_CONTACTS)) {
+                        Toast.makeText(MainActivity.this, "permission is needed to READ_CONTACTS", Toast.LENGTH_SHORT).show();
+                    }
+                    requestPermissions(new String[]{Manifest.permission.READ_CONTACTS}, READ_CONTACTS_CODE);
+                }
+                break;
+            case 3:     //for READING EXTERNAL STORAGE
+                if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+                    return true;
+                } else {
+                    if (shouldShowRequestPermissionRationale(Manifest.permission.READ_EXTERNAL_STORAGE)) {
+                        Toast.makeText(MainActivity.this, "permission is needed to READ_EXTERNAL_STORAGE", Toast.LENGTH_SHORT).show();
+                    }
+                    requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, READ_EXTERNAL_STORAGE_CODE);
+                }
+                break;
+        }
+        return false;
+    }
 }
 
