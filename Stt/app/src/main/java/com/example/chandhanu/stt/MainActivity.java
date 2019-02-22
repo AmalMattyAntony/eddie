@@ -5,16 +5,19 @@ import android.app.Activity;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.ProgressDialog;
 import android.app.TaskStackBuilder;
 import android.content.ActivityNotFoundException;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.media.MediaPlayer;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
@@ -45,6 +48,8 @@ import java.io.OutputStream;
 import java.sql.Time;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Iterator;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -135,7 +140,8 @@ public class MainActivity extends AppCompatActivity {
         b4.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(getApplicationContext(), SecondActivity.class);
+                //Intent intent = new Intent(getApplicationContext(), SecondActivity.class);
+                Intent intent = new Intent(getApplicationContext(), Main2Activity.class);
                 intent.putExtra("speak",textView.getText().toString());
                 startActivity(intent);
                 /*Calendar c = Calendar.getInstance();
@@ -196,7 +202,7 @@ public class MainActivity extends AppCompatActivity {
     public void speak(String query)
     {
         //temp quick fix to convert all speak to speakLyreBird
-
+        int voice_select=Integer.parseInt(getSharedPreferences("eddie-overall",Context.MODE_PRIVATE).getString(getString(R.string.voice_toggle),"0"));
         if(query=="") {
             query = textView.getText().toString();
         }
@@ -254,7 +260,20 @@ public boolean offlineResponse(String input)
     {
         return googleSearch(input);
     }
+    else if(Pattern.matches("(?i).*open.*",input))
+    {
+        openApps(input);
+        return true;
+        //return googleSearch(input);
+    }
     return false;
+}
+void openApps(String input)
+{
+    input=input.replaceAll("(?i)open ","");
+    //input=input.replaceAll(" ","");
+    toaster(input);
+    new AsyncCaller().execute(input);
 }
 boolean googleSearch(String input)
 {
@@ -371,7 +390,8 @@ boolean sms(String input)
     if (m.find()) {
         if(input.length()==12)
         {
-            input=input.substring(2,11);
+            input=input.substring(2,12);
+            Toast.makeText(getApplicationContext(),input,Toast.LENGTH_LONG).show();
             tv.setText(input);
         }
         lastHeard=input;
@@ -578,9 +598,6 @@ public void sendMessage(String request) {
 
     void writeFile(String fileName)
     {
-       // File rootPath = new File(Environment.getExternalStorageDirectory(), "directory_name");
-       // tv4.setText(Environment.getExternalStorageDirectory().toString());
-       // mediaPlayer = MediaPlayer.create(this,Uri.parse(getString(R.string.voice_path)+"temp.mp3"));   //change perfect to ur song.mp3
         if(fileName=="")fileName="temp";
         Log.i("writing to file",fileName);
         File p=new File(getString(R.string.voice_path));
@@ -728,6 +745,90 @@ public void sendMessage(String request) {
                 break;
         }
         return false;
+    }
+    void toaster(String text)
+    {
+        Toast.makeText(getApplicationContext(),text,Toast.LENGTH_SHORT).show();
+    }
+    private class AsyncCaller extends AsyncTask<String, Void, String[]>
+    {
+        ProgressDialog pdLoading = new ProgressDialog(getApplicationContext());
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+
+            //this method will be running on UI thread
+            //pdLoading.setMessage("\tLoading...");
+            //pdLoading.show();
+        }
+        @Override
+        protected String[] doInBackground(String... params) {
+
+            //this method will be running on background thread so don't update UI frome here
+            //do your long running http tasks here,you dont want to pass argument and u can access the parent class' variable url over here
+            //for(int i=0;i<10000;++i)for(int j=0;j<10000;++j);
+
+            return findPackageName(params[0]);
+            //return "paniten pa";//Void.TYPE;
+        }
+
+        @Override
+        protected void onPostExecute(String... result) {
+            super.onPostExecute(result);
+
+            //this method will be running on UI thread
+            //toaster("uhm this?");
+            toaster(result[0]+":"+result[1]);
+            if(result[0].equals("notFound"))
+            {
+                speak("Not installed?");
+                startActivity(new Intent(Intent.ACTION_VIEW).setData(Uri.parse("https://play.google.com/store/search?q="+result[1]+"&c=apps")));
+            }
+            else
+            {
+                Log.i("cause of crash",result[0]);
+                speak("Opening "+result[1]);
+                startActivity(getPackageManager().getLaunchIntentForPackage(result[0]));
+            }
+            // pdLoading.dismiss();
+        }
+        boolean matcher(String input,String target)
+        {
+            input=input.toLowerCase();
+            target=target.toLowerCase();
+            target=target.replaceAll(" ","");
+            //if()
+            input=input.replaceAll(" ","");
+            //if(Pattern.matches("(?i).*alarm.*",input))
+            if(target.matches("(?i).*("+input+").*"))
+                return true;
+            else
+                return false;
+        }
+        String[] findPackageName(String name) {
+            String a[]=new String[2];
+            a[0]="notFound";
+            a[1]=name;
+            PackageManager packageManager = getPackageManager();
+            List<ApplicationInfo> appList = packageManager.getInstalledApplications(PackageManager.GET_META_DATA);
+            for(int i=0;i<appList.size();++i){
+                try {
+                    String curr=packageManager.getApplicationLabel(packageManager.getApplicationInfo(appList.get(i).packageName.toString(),0)).toString();
+                    curr=curr.toLowerCase();
+                    if(matcher(name,curr))
+                    {
+                        a[0]=appList.get(i).packageName.toString();
+                        a[1]=curr;
+                        return a;
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            return a;
+
+        }
     }
 }
 

@@ -25,7 +25,7 @@ import java.io.UnsupportedEncodingException;
 public class JsonObjectRequest1 extends JsonRequest<JSONObject> {
     //public Context c;
     //public SecondActivity a;
-    TextView t;
+    String filename;
     public byte[] body;
     /**
      * Creates a new request.
