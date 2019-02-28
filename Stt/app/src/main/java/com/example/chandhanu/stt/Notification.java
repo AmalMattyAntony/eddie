@@ -23,14 +23,16 @@ public class Notification extends BroadcastReceiver
     @Override
     public void onReceive(Context context, Intent intent)
     {
-        makeNotification(context);
-        Toast.makeText(context, "Reminder from Eddie", Toast.LENGTH_LONG).show(); // For example
+        String text=intent.getStringExtra("content");
+        makeNotification(context,text);
+        Toast.makeText(context, text, Toast.LENGTH_LONG).show(); // For example
     }
 
-    public void setNotification(Context context,long time)
+    public void setNotification(Context context,String text,long time)
     {
         AlarmManager am =( AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
         Intent i = new Intent(context, Notification.class);
+        i.putExtra("content",text);
         PendingIntent pi = PendingIntent.getBroadcast(context, 0, i, 0);
         am.set(AlarmManager.RTC_WAKEUP, time, pi);
         //makeNotification(context);
@@ -44,7 +46,7 @@ public class Notification extends BroadcastReceiver
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         alarmManager.cancel(sender);
     }
-    public void makeNotification(Context context)
+    public void makeNotification(Context context,String text)
     {
         createNotificationChannel(context);
         Intent resultIntent = new Intent(context, SecondActivity.class);
@@ -57,12 +59,10 @@ public class Notification extends BroadcastReceiver
         PendingIntent resultPendingIntent = stackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
         mBuilder = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.icon_record)
-                .setContentTitle("My notification")
-                .setContentText("Much longer text that cannot fit one line...")
+                .setContentTitle("Eddie")
+                .setContentText("Reminder!")
                 .setStyle(new NotificationCompat.BigTextStyle()
-                        .bigText("This is a reminder" +
-                                "hrloosrgslgnsglnsgljnrsg" +
-                                "this is it"))
+                        .bigText(text))
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setContentIntent(resultPendingIntent)
                 .setAutoCancel(true);

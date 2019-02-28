@@ -28,13 +28,22 @@ import android.speech.RecognizerIntent;
 import android.speech.tts.TextToSpeech;
 import android.support.annotation.RequiresApi;
 import android.support.customtabs.CustomTabsIntent;
+import android.support.design.widget.FloatingActionButton;
+import android.support.design.widget.NavigationView;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationManagerCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.view.GravityCompat;
+import android.support.v4.widget.DrawerLayout;
+import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.Toolbar;
 import android.telephony.SmsManager;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
@@ -50,18 +59,29 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.android.volley.AuthFailureError;
+import com.android.volley.NetworkError;
+import com.android.volley.NoConnectionError;
+import com.android.volley.ParseError;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
+import com.android.volley.ServerError;
+import com.android.volley.TimeoutError;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
+import com.ibm.watson.developer_cloud.service.security.IamOptions;
+import com.ibm.watson.developer_cloud.tone_analyzer.v3.ToneAnalyzer;
+import com.ibm.watson.developer_cloud.tone_analyzer.v3.model.ToneAnalysis;
+import com.ibm.watson.developer_cloud.tone_analyzer.v3.model.ToneOptions;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -71,10 +91,12 @@ import java.util.Locale;
 import java.util.Map;
 //import com.example.chandhanu.stt.Alarm;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity
+        implements NavigationView.OnNavigationItemSelectedListener {
 
     private TextView textView;
     String phno;
+    static int counter=0;
     String whoCalledListen="";
     JsonObjectRequest1 jsonObjectRequest;
     String token;
@@ -89,12 +111,155 @@ public class MainActivity extends AppCompatActivity {
     String lastHeard;
     String CHANNEL_ID="eddie_n1";
     int i=0;
+    String words[];
     private DatabaseHelper myDb;
+    //copy pasting
+    @Override
+    public void onBackPressed() {
+        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+        if (drawer.isDrawerOpen(GravityCompat.START)) {
+            drawer.closeDrawer(GravityCompat.START);
+        } else {
+            super.onBackPressed();
+        }
+    }
 
     @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.main2, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+
+        //noinspection SimplifiableIfStatement
+        if (id == R.id.action_settings) {
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public boolean onNavigationItemSelected(MenuItem item) {
+        // Handle navigation view item clicks here.
+        int id = item.getItemId();
+        if (id == R.id.voice_toggle) {
+            voiceToggle();
+        } else if (id == R.id.nav_gallery) {
+            //toaster("here");
+            Log.i("eddie","hello world");
+            //speakCached("hello world this is a test audio sample");
+            CachedSpeak c=new CachedSpeak(getApplicationContext(),"testing to check how fast the media play back is when cached");
+        } else if (id == R.id.nav_slideshow) {
+            //getWeather();
+            new EmotionDetection(this,"this is going to go very well").execute();
+
+        } else if (id == R.id.nav_manage) {
+            final String speak="nice";
+            toaster("niceeee");
+            JsonObjectRequest1 jsonObjectRequest1;
+            String url = "https://avatar.lyrebird.ai/api/v0/generate";
+            final JSONObject jsonObject = new JSONObject();
+            try {
+                jsonObject.put("text", speak);
+            } catch (JSONException e) {
+                toaster("in main"+e.toString());
+                e.printStackTrace();
+            }
+            jsonObjectRequest1 = new JsonObjectRequest1
+                    (getApplicationContext(),speak,Request.Method.POST, url, jsonObject, new Response.Listener<JSONObject>() {
+
+                        @Override
+                        public void onResponse(JSONObject response) {
+
+                            //textView.setText("Response: ");// + response.toString());
+                            // tv4.setText(jsonObjectRequest.responseBody.toString());
+                            playFromFile(speak);
+                            //writeFile(speak);
+                        }
+                    }, new Response.ErrorListener() {
+
+                        @Override
+                        public void onErrorResponse(VolleyError error) {
+                            // TODO: Handle error
+                            Log.i("error in volley:", error.toString());
+                            //Log.i("network errorapparently",error.networkResponse.toString());
+                            //writeFile(speak);
+
+                        }
+                    }) {
+
+                @Override
+                public Map<String, String> getHeaders() throws AuthFailureError {
+                    Map<String, String> params = new HashMap<String, String>();
+                    params.put("Content-Type", "application/json");
+                    if (token == "notFound") {
+                        textView.setText("token is still not set");
+                    }
+                    params.put("Authorization", "Bearer " + token);
+                    return params;
+                }
+
+            };
+            //jsonObjectRequest.c=getApplicationContext();
+            //jsonObjectRequest.a=this;
+            // textView.setText(getToken());
+            queue.add(jsonObjectRequest1);
+        } else if (id == R.id.nav_share) {
+
+        } else if (id == R.id.nav_send) {
+
+        }
+
+        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+        drawer.closeDrawer(GravityCompat.START);
+        return true;
+    }
+    void voiceToggle()
+    {
+        SharedPreferences sharedPref = getSharedPreferences("eddie-overall",Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPref.edit();
+        int vs= 1-Integer.parseInt(sharedPref.getString(getString(R.string.voice_toggle), "1"));
+        editor.putString(getString(R.string.voice_toggle),Integer.toString(vs));
+        editor.commit();
+        Toast.makeText(getApplicationContext(),"Voice:"+(vs==0?"Google Voice":"Personalised"),Toast.LENGTH_LONG).show();
+
+    }
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
+        //super.onCreate(savedInstanceState);
+        //setContentView(R.layout.activity_main);
+        //copy pasting
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_main2);
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+
+        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+        fab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
+                        .setAction("Action", null).show();
+            }
+        });
+
+        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
+                this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+        drawer.addDrawerListener(toggle);
+        toggle.syncState();
+
+        NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+        navigationView.setNavigationItemSelectedListener(this);
+        //end of copy pasting
         myDb=new DatabaseHelper(this);
         android_id = Settings.Secure.getString(this.getContentResolver(), Settings.Secure.ANDROID_ID);
         queue = Volley.newRequestQueue(getApplicationContext());
@@ -193,11 +358,17 @@ public class MainActivity extends AppCompatActivity {
                 //textView.setText("caling db");
                 //textView.setText(myDb.getData("Amal"));
                 textView.setText("lh"+lastHeard);
+                setReminderRTC("hello",0);
                 //Notification n=new Notification();
                 //n.setNotification(getApplicationContext(),Calendar.getInstance().getTimeInMillis()+300);
             }
         });
 
+    }
+    void setReminderRTC(String text,long time)
+    {
+        Notification n=new Notification();
+        n.setNotification(getApplicationContext(),text,time);//Calendar.getInstance().getTimeInMillis()+300);
     }
     public void speak(String query)
     {
@@ -212,12 +383,18 @@ public class MainActivity extends AppCompatActivity {
         }
 
         Toast.makeText(getApplicationContext(), query,Toast.LENGTH_SHORT).show();
-        if(voice_select==1)
+        //if(voice_select==1)
+        if(true)
             speakLyreBird(query);
         else
-            t1.speak(query, TextToSpeech.QUEUE_FLUSH, null);
+            gSpeak(query);
 
     }
+    void gSpeak(String query)
+    {
+        t1.speak(query, TextToSpeech.QUEUE_FLUSH, null);
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -231,6 +408,7 @@ public class MainActivity extends AppCompatActivity {
                      case("sms"): sendSMS(lastHeard,request);
                      default: sendMessage(request);;
                 }*/
+                new EmotionDetection(this,request).execute();
                 if(whoCalledListen=="sms") sendSMS(phno,request);
                 else sendMessage(request);
                 lastHeard=request;
@@ -428,6 +606,14 @@ public boolean sendSMS(String phoneNo, String msg) {
         whoCalledListen="";
         return true;
     }
+    long getTimeInMillis(int hour,int min)
+    {
+        Calendar mycalendar = Calendar.getInstance();
+        mycalendar.set(Calendar.HOUR_OF_DAY, hour);
+        mycalendar.set(Calendar.MINUTE, min);
+        mycalendar.set(Calendar.SECOND, 0);
+       return mycalendar.getTimeInMillis();
+    }
 boolean setReminder(String input)
 {
     //still in works
@@ -441,13 +627,15 @@ boolean setReminder(String input)
         if(Pattern.matches("(?i).*[A.?M.?|P.?M.?].*",input))
             hr+=12;
         time=time.replaceAll("[^\\d|^:]","");
-        speak("Setting alarm for "+time);
+        speak("Setting reminder for "+time);
         String[] t=time.split(":");
         hr+=Integer.parseInt(t[0]);
         min+=Integer.parseInt(t[1]);
+        setReminderRTC("Reminding you do to something",getTimeInMillis(hr,min));
+        speak("Setting reminder");
         textView.setText(hr+" "+min);
     }else {
-        textView.setText("I am sorry, please say that again2");
+        textView.setText("I am sorry, please say that again");
         speak("");
     }
     return true;
@@ -477,9 +665,8 @@ public void sendMessage(String request) {
                         textView.setText(response.getString("reply"));
                         String toSpeak = textView.getText().toString();
                         speak(toSpeak);
-                    }
-                    catch (Exception e)
-                    {
+                    } catch (Exception e) {
+                        // if(e.)
                         e.printStackTrace();
                     }
                 }
@@ -487,11 +674,22 @@ public void sendMessage(String request) {
 
                 @Override
                 public void onErrorResponse(VolleyError error) {
-                    // TODO: Handle error
+                // TODO: Handle error
                     tv.setText(error.toString());
-
+                    if (error instanceof NetworkError) {
+                        } else if (error instanceof ServerError) {
+                        } else if (error instanceof AuthFailureError) {
+                        } else if (error instanceof ParseError) {
+                        } else if (error instanceof NoConnectionError) {
+                        gSpeak("No internet connection, try offline mode");
+                        } else if (error instanceof TimeoutError) {
+                            Toast.makeText(getApplicationContext(),
+                                    "Can't reach Eddie's thinking processor",
+                                    Toast.LENGTH_LONG).show();
+                            gSpeak("Can't reach Eddie's thinking processor");
+                        }
                 }
-            });
+                });
     queue.add(jsonObjectRequest);
     Toast.makeText(getApplicationContext(),"done",Toast.LENGTH_SHORT).show();
 }
@@ -520,13 +718,61 @@ public void sendMessage(String request) {
             notificationManager.createNotificationChannel(channel);
         }
     }
+    void getWeather()
+    {
+        String city="coimbatore,IN";
+        String key="eef5424ab1f709ae6f86dac42f98f45b";
+        String url="http://api.openweathermap.org/data/2.5/weather?q="+city+"&appid="+key+"&units=metric";
+        JsonObjectRequest req=new JsonObjectRequest( Request.Method.POST, url,null,new Response.Listener<JSONObject>() {
+
+            @Override
+            public void onResponse(JSONObject response) {
+                try {
+                  //  gSpeak(response.get("temp").toString());
+                    //IamOptions option;
+                    JSONObject ja=response.getJSONObject("main");
+                   // ja.getJSONObject(0);
+                    Log.i("eddie","here");
+                    Log.i("eddie",ja.getString("temp"));
+
+                } catch (Exception e) {
+                    // if(e.)
+                    e.printStackTrace();
+                }
+            }
+        }, new Response.ErrorListener() {
+
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                // TODO: Handle error
+                tv.setText(error.toString());
+                if (error instanceof NetworkError) {
+                } else if (error instanceof ServerError) {
+                } else if (error instanceof AuthFailureError) {
+                } else if (error instanceof ParseError) {
+                } else if (error instanceof NoConnectionError) {
+                    gSpeak("No internet connection, try offline mode");
+                } else if (error instanceof TimeoutError) {
+                    Toast.makeText(getApplicationContext(),
+                            "Can't reach OpenWeather",
+                            Toast.LENGTH_LONG).show();
+                    gSpeak("Can't reach OpenWeather");
+                }
+            }
+        });
+        queue.add(req);
+    }
     void speakLyreBird(String speak)
     {
         try {
-            http1(speak);
+            int voice_select=Integer.parseInt(getSharedPreferences("eddie-overall",Context.MODE_PRIVATE).getString(getString(R.string.voice_toggle),"0"));
+            if(voice_select==1)
+                new CachedSpeak(this,speak);
+            else
+                http1(speak);
             //flow
             // speakLyreBird -> http1 -> volley with modified request -> onresult in modified request class its own body arh(byte[]) is set -> calls mediaplayer.start()
-        } catch (JSONException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
         //
@@ -543,6 +789,97 @@ public void sendMessage(String request) {
     {
         SharedPreferences sharedPref = getSharedPreferences("eddie-overall",Context.MODE_PRIVATE);
         return sharedPref.getString(getString(R.string.token),"notFound");
+    }
+    void speakCached(final String speak)
+    {
+        Log.i("eddie","speak cached");
+        words=speak.split(" ");
+        String s="";
+        //toaster("gonna speak"+words.length);
+        boolean loaded[]=new boolean[words.length];
+        //for(int i=0;i<words.length;++i)loaded[i]=false;
+        CountDownLatch audio=new CountDownLatch(words.length);
+        counter=0;
+        for(int i=0;i<words.length;++i) {
+            try {
+                //toaster("fetching"+words[0]);
+                s+=words[i];
+                fetchWords(words[i],words.length);
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+        toaster(s);
+
+    }
+    static synchronized int incrementCounter(int option) {
+        //System.out.println(Thread.currentThread().getName() + ": " + counter);
+        if(option==0)
+        {
+            counter++;
+            Log.i("eddie","counter:"+counter);
+        }
+        return counter;
+    }
+    synchronized void fetchWords(final String speak, final int count) throws JSONException {
+
+        Log.i("eddie","fetch words");
+        File temp=new File(getString(R.string.voice_path)+speak+".mp3");
+        if(!temp.exists()) {
+            //temp.exists(t)
+         //if(true){
+            Log.i("eddie","fetch words if");
+            String url = "https://avatar.lyrebird.ai/api/v0/generate";
+            final JSONObject jsonObject = new JSONObject();
+            jsonObject.put("text", speak);
+            jsonObjectRequest = new JsonObjectRequest1
+                    (Request.Method.POST, url, jsonObject, new Response.Listener<JSONObject>() {
+
+                        @Override
+                        public void onResponse(JSONObject response) {
+                            Log.i("eddie","response");
+                            writeFileWithoutPlaying(speak);
+                            toaster(speak);
+                            incrementCounter(0);
+                            if(incrementCounter(1)==count)
+                            {
+                                playFromFileCached(words,0);
+                            }
+                        }
+                    }, new Response.ErrorListener() {
+
+                        @Override
+                        public void onErrorResponse(VolleyError error) {
+                            // TODO: Handle error
+                            Log.i("error in volley:", error.toString());
+                            //writeFile(speak);
+
+                        }
+                    }) {
+
+                @Override
+                public Map<String, String> getHeaders() throws AuthFailureError {
+                    Map<String, String> params = new HashMap<String, String>();
+                    params.put("Content-Type", "application/json");
+                    if (token == "notFound") {
+                        textView.setText("token is still not set");
+                    }
+                    params.put("Authorization", "Bearer " + token);
+                    return params;
+                }
+
+            };
+            queue.add(jsonObjectRequest);
+        }
+        else
+        {
+            Log.i("eddie","fetch words else");
+            incrementCounter(0);
+            if(incrementCounter(1)==count)
+            {
+                playFromFileCached(words,0);
+            }
+        }
     }
     void http1(final String speak) throws JSONException {
         File temp=new File(getString(R.string.voice_path)+speak+".mp3");
@@ -623,6 +960,76 @@ public void sendMessage(String request) {
         // AsyncTaskRunner t=new AsyncTaskRunner();
         //t.execute("5");
     }
+    void writeFileWithoutPlaying(String fileName)
+    {
+        if(fileName=="")fileName="temp";
+        Log.i("writing to file",fileName);
+        File p=new File(getString(R.string.voice_path));
+        try {
+            if (!p.exists())
+                p.mkdir();
+            //Log.i("p is",p);
+            File dataFile = new File(getString(R.string.voice_path)+fileName+".mp3");
+            dataFile.createNewFile();
+            dataFile.setWritable(true);
+            OutputStream o = new FileOutputStream(dataFile);
+            while (jsonObjectRequest.body == null) ;
+            o.write(jsonObjectRequest.body);
+            o.flush();
+            o.close();
+            // speak1();
+           // playFromFile(fileName);
+        }catch (IOException e) {
+            Log.i("error in writing",e.toString());
+            e.printStackTrace();
+            textView.setText(e.toString());
+        }
+        // AsyncTaskRunner t=new AsyncTaskRunner();
+        //t.execute("5");
+    }
+    void playFromFileCached(final String fileNames[],final int i)
+    {
+        Log.i("eddie","hello world"+fileNames[0]);
+        if(i>=fileNames.length)
+            return;
+        final String fileName=fileNames[i];
+        mediaPlayer=new MediaPlayer();
+        try {
+            mediaPlayer.setDataSource(this,Uri.parse(getString(R.string.voice_path)+fileName+".mp3"));
+            //mediaPlayer.setDataSource(this,Uri.parse("temp.mp3"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        mediaPlayer.prepareAsync();
+        mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+            @Override
+            public void onPrepared(MediaPlayer player) {
+                player.start();
+            }
+        });
+        mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+            @Override
+            public void onCompletion(MediaPlayer mp) {
+                toaster(fileName);
+                mediaPlayer.release();
+                playFromFileCached(fileNames,i+1);
+
+            }
+        });
+
+      /*  mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+
+            @Override
+            public void onCompletion(MediaPlayer mp) {
+                mp.release();
+            }
+
+        });
+        */
+
+    }
+
     void playFromFile(String fileName)
     {
         if(fileName=="")
